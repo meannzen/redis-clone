@@ -230,7 +230,7 @@ impl Command {
                     GSearch(cmd) => cmd.apply(db, conn).await,
                     ACL(cmd) => cmd.apply(db, conn).await,
                     Unknown(cmd) => cmd.apply(conn).await,
-                    Watch(cmd) => cmd.apply(conn).await,
+                    Watch(cmd) => cmd.apply(transaction_state, conn).await,
                     _ => Ok(()),
                 }
             }

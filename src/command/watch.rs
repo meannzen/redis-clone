@@ -1,6 +1,6 @@
 use bytes::Bytes;
 
-use crate::{parse::Parse, Connection, Frame};
+use crate::{parse::Parse, server::TransactionState, Connection, Frame};
 
 #[derive(Debug)]
 pub struct Watch {
@@ -21,9 +21,16 @@ impl Watch {
         Ok(Watch { args })
     }
 
-    pub async fn apply(self, conn: &mut Connection) -> crate::Result<()> {
+    pub async fn apply(
+        self,
+        transaction: &TransactionState,
+        conn: &mut Connection,
+    ) -> crate::Result<()> {
         dbg!(self.args);
-        let frame = Frame::Simple("OK".to_string());
+        let mut frame = Frame::Simple("OK".to_string());
+        if *transaction.multi.lock().unwrap() {
+            frame = Frame::Error("ERR WATCH inside MULTI is not allowed".to_string());
+        }
         conn.write_frame(&frame).await?;
         Ok(())
     }
