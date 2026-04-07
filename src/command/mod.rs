@@ -28,6 +28,7 @@ pub mod subscribe;
 pub mod type_cmd;
 pub mod unknown;
 pub mod wait;
+pub mod watch;
 pub mod xadd;
 pub mod xrange;
 pub mod xread;
@@ -57,6 +58,7 @@ pub use xread::XRead;
 pub mod zadd;
 pub use authentication::{Auth, ACL};
 pub use geo::{GeoAdd, GeoDist, GeoPos, GeoSearch};
+pub use watch::Watch;
 pub use zadd::{ZAdd, ZCard, ZRange, ZRank, ZRem, ZScore};
 
 #[derive(Debug)]
@@ -101,6 +103,7 @@ pub enum Command {
     ACL(ACL),
     Auth(Auth),
     Unknown(Unknown),
+    Watch(Watch),
 }
 
 impl Command {
@@ -156,6 +159,7 @@ impl Command {
                     }
                 }
             }
+            "watch" => Command::Watch(Watch::parse_frame(&mut parse)?),
             _ => {
                 return Ok(Command::Unknown(Unknown::new(command_string)));
             }
@@ -226,6 +230,7 @@ impl Command {
                     GSearch(cmd) => cmd.apply(db, conn).await,
                     ACL(cmd) => cmd.apply(db, conn).await,
                     Unknown(cmd) => cmd.apply(conn).await,
+                    Watch(cmd) => cmd.apply(conn).await,
                     _ => Ok(()),
                 }
             }
@@ -277,6 +282,7 @@ impl Command {
             Command::GSearch(_) => "gsearch",
             Command::ACL(_) => "acl",
             Command::Auth(_) => "auth",
+            Command::Watch(_) => "watch",
             Command::Unknown(_) => "unknown",
         }
     }
