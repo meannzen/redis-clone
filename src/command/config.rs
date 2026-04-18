@@ -29,16 +29,39 @@ impl Config {
         conn: &mut Connection,
     ) -> crate::Result<()> {
         let mut frame: Frame = Frame::array();
-        if self.cmd == "dir" {
-            if let Some(dir) = config.dir.clone() {
+        match self.cmd.as_str() {
+            "dir" => {
                 frame.push_bulk(Bytes::from("dir"));
-                frame.push_bulk(Bytes::from(dir));
+                let directory = config
+                    .dir
+                    .clone()
+                    .unwrap_or_else(|| config.get_current_dir());
+                frame.push_bulk(Bytes::from(directory));
             }
-        }
-        if self.cmd == "dbfilename" {
-            if let Some(dir) = config.dbfilename.clone() {
-                frame.push_bulk(Bytes::from("dbfilename"));
-                frame.push_bulk(Bytes::from(dir));
+            "dbfilename" => {
+                if let Some(filename) = config.dbfilename.clone() {
+                    frame.push_bulk(Bytes::from("dbfilename"));
+                    frame.push_bulk(Bytes::from(filename));
+                }
+            }
+            "appendonly" => {
+                frame.push_bulk(Bytes::from("appendonly"));
+                frame.push_bulk(Bytes::from("no"));
+            }
+            "appenddirname" => {
+                frame.push_bulk(Bytes::from("appenddirname"));
+                frame.push_bulk(Bytes::from("appendonlydir"));
+            }
+            "appendfilename" => {
+                frame.push_bulk(Bytes::from("appendfilename"));
+                frame.push_bulk(Bytes::from("appendonly.aof"));
+            }
+            "appendfsync" => {
+                frame.push_bulk(Bytes::from("appendfsync"));
+                frame.push_bulk(Bytes::from("everysec"));
+            }
+            _ => {
+                // Handle unknown config keys if necessary,
             }
         }
         conn.write_frame(&frame).await?;

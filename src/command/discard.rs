@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use crate::{
     parse::Parse,
     server::{TransactionState, WatchRegistry},

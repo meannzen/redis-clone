@@ -171,7 +171,7 @@ impl Command {
         parse.finish()?;
         Ok(command)
     }
-
+    #[allow(clippy::too_many_arguments)]
     pub async fn apply(
         self,
         transaction_state: &TransactionState,

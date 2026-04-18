@@ -111,7 +111,7 @@ async fn handle_command(
 ) -> crate::Result<()> {
     match Command::from_frame(frame)? {
         Command::Subscribe(cmd) => {
-            subscribe_to.extend(cmd.channels.into_iter());
+            subscribe_to.extend(cmd.channels);
         }
 
         Command::Ping(_) => {

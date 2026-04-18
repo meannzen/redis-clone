@@ -43,6 +43,13 @@ impl Cli {
         Some(format!("{}/{}", dir_path.trim_end_matches('/'), file_name))
     }
 
+    pub fn get_current_dir(&self) -> String {
+        env::current_dir()
+            .ok()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| ".".to_string())
+    }
+
     pub fn port(&self) -> u16 {
         self.port.unwrap_or(DEFAULT_PORT)
     }

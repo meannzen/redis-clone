@@ -31,7 +31,7 @@ impl Exec {
             let mut queue_commands = trans.queue_command.lock().unwrap();
             frame = Frame::array();
             let mut watch_keys = watch_registry.lock().unwrap();
-            is_dirty = watch_keys.values().any(|v| *v == true);
+            is_dirty = watch_keys.values().any(|v| *v);
             if is_dirty {
                 queue_commands.clear();
                 watch_keys.clear();
