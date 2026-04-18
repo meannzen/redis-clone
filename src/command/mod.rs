@@ -213,7 +213,7 @@ impl Command {
                     Ince(cmd) => cmd.apply(db, conn, transaction_state).await,
                     Muiti(cmd) => cmd.apply(transaction_state, conn).await,
                     Exec(cmd) => cmd.apply(db, transaction_state, conn, watch_registry).await,
-                    Discard(cmd) => cmd.apply(conn, transaction_state).await,
+                    Discard(cmd) => cmd.apply(conn, transaction_state, watch_registry).await,
                     RPush(cmd) => cmd.apply(db, conn).await,
                     LRange(cmd) => cmd.apply(db, conn).await,
                     LPush(cmd) => cmd.apply(db, conn).await,
