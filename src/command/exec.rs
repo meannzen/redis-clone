@@ -2,7 +2,7 @@ use bytes::Bytes;
 
 use crate::{
     parse::Parse,
-    server::{QueueCommand, TransactionState},
+    server::{QueueCommand, TransactionState, WatchRegistry},
     store::Db,
     Connection, Frame,
 };
@@ -21,14 +21,23 @@ impl Exec {
         db: &Db,
         trans: &TransactionState,
         conn: &mut Connection,
+        watch_registry: &WatchRegistry,
     ) -> crate::Result<()> {
         use atoi::atoi;
         let mut frame;
+        let is_dirty;
         {
             let mut multi = trans.multi.lock().unwrap();
             let mut queue_commands = trans.queue_command.lock().unwrap();
+            frame = Frame::array();
+            let mut watch_keys = watch_registry.lock().unwrap();
+            is_dirty = watch_keys.values().any(|v| *v == true);
+            if is_dirty {
+                queue_commands.clear();
+                watch_keys.clear();
+                *multi = false;
+            }
             if *multi {
-                frame = Frame::array();
                 while let Some(queue_command) = queue_commands.pop_front() {
                     match queue_command {
                         QueueCommand::GET(cmd) => {
@@ -72,12 +81,15 @@ impl Exec {
                     }
                 }
                 *multi = false;
-            } else {
+            } else if !is_dirty {
                 frame = Frame::Error("ERR EXEC without MULTI".to_string());
             }
         }
-
-        conn.write_frame(&frame).await?;
+        if !is_dirty {
+            conn.write_frame(&frame).await?;
+        } else {
+            conn.write_null_array().await?;
+        }
         Ok(())
     }
 }

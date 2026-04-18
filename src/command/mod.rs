@@ -2,7 +2,7 @@ use crate::command::lrange::{BLPop, LLen, LPop};
 use crate::command::rpush::LPush;
 use crate::command::subscribe::Unsubscribe;
 use crate::parse::Parse;
-use crate::server::{ReplicaState, Shutdown, TransactionState};
+use crate::server::{ReplicaState, Shutdown, TransactionState, WatchRegistry};
 use crate::store::Db;
 use crate::{Connection, Frame};
 
@@ -176,6 +176,7 @@ impl Command {
         config: &crate::server_cli::Cli,
         conn: &mut Connection,
         shutdown: &mut Shutdown,
+        watch_registry: &WatchRegistry,
     ) -> crate::Result<()> {
         use Command::*;
 
@@ -194,7 +195,7 @@ impl Command {
                     Ping(cmd) => cmd.apply(conn).await,
                     Echo(cmd) => cmd.apply(conn).await,
                     Get(cmd) => cmd.apply(db, conn, transaction_state).await,
-                    Set(cmd) => cmd.apply(db, conn, transaction_state).await,
+                    Set(cmd) => cmd.apply(db, conn, transaction_state, watch_registry).await,
                     Config(cmd) => cmd.apply(config, conn).await,
                     Keys(cmd) => cmd.apply(db, conn).await,
                     Info(cmd) => cmd.apply(config, conn).await,
@@ -207,7 +208,7 @@ impl Command {
                     XRead(cmd) => cmd.apply(db, conn).await,
                     Ince(cmd) => cmd.apply(db, conn, transaction_state).await,
                     Muiti(cmd) => cmd.apply(transaction_state, conn).await,
-                    Exec(cmd) => cmd.apply(db, transaction_state, conn).await,
+                    Exec(cmd) => cmd.apply(db, transaction_state, conn, watch_registry).await,
                     Discard(cmd) => cmd.apply(conn, transaction_state).await,
                     RPush(cmd) => cmd.apply(db, conn).await,
                     LRange(cmd) => cmd.apply(db, conn).await,
@@ -230,7 +231,7 @@ impl Command {
                     GSearch(cmd) => cmd.apply(db, conn).await,
                     ACL(cmd) => cmd.apply(db, conn).await,
                     Unknown(cmd) => cmd.apply(conn).await,
-                    Watch(cmd) => cmd.apply(transaction_state, conn).await,
+                    Watch(cmd) => cmd.apply(transaction_state, conn, watch_registry).await,
                     _ => Ok(()),
                 }
             }

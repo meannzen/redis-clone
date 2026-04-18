@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     future::Future,
     path::Path,
     sync::{Arc, Mutex},
@@ -57,6 +57,8 @@ impl ReplicaState {
     }
 }
 
+pub type WatchRegistry = Arc<Mutex<HashMap<String, bool>>>;
+
 use crate::{
     command::{Get, Incr, Set},
     database::parser::RdbParse,
@@ -73,6 +75,7 @@ struct Listener {
     notify_shutdown: broadcast::Sender<()>,
     shutdown_complete_tx: mpsc::Sender<()>,
     replica_state: ReplicaState,
+    watch_registry: WatchRegistry,
 }
 
 impl Listener {
@@ -93,6 +96,7 @@ impl Listener {
                 _shutdown_complete: self.shutdown_complete_tx.clone(),
                 replica_state: self.replica_state.clone(),
                 transaction_state: TransactionState::default(),
+                watch_registry: self.watch_registry.clone(),
             };
 
             tokio::spawn(async move {
@@ -147,6 +151,7 @@ pub async fn run(listener: TcpListener, config: Cli, shutdown: impl Future) {
         shutdown_complete_tx,
         config: Arc::new(config),
         replica_state: ReplicaState::new(),
+        watch_registry: Arc::new(Mutex::new(HashMap::new())),
     };
 
     tokio::select! {
@@ -180,6 +185,7 @@ struct Handler {
     _shutdown_complete: mpsc::Sender<()>,
     replica_state: ReplicaState,
     transaction_state: TransactionState,
+    watch_registry: WatchRegistry,
 }
 
 impl Handler {
@@ -207,6 +213,7 @@ impl Handler {
                     &self.config,
                     &mut self.connection,
                     &mut self.shutdown,
+                    &self.watch_registry,
                 )
                 .await?;
 

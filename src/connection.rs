@@ -119,6 +119,11 @@ impl Connection {
         self.len
     }
 
+    pub fn get_client_port(&self) -> io::Result<u16> {
+        let inner = self.stream.get_ref();
+        Ok(inner.peer_addr()?.port())
+    }
+
     pub fn try_clone(&self) -> io::Result<Self> {
         let inner_stream = self.stream.get_ref();
         let fd = inner_stream.as_raw_fd();

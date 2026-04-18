@@ -4,7 +4,7 @@ use bytes::Bytes;
 
 use crate::{
     parse::Parse,
-    server::{QueueCommand, TransactionState},
+    server::{QueueCommand, TransactionState, WatchRegistry},
     store::Db,
     Connection, Frame,
 };
@@ -63,6 +63,7 @@ impl Set {
         db: &Db,
         conn: &mut Connection,
         trans: &TransactionState,
+        watch_registry: &WatchRegistry,
     ) -> crate::Result<()> {
         let mut response_str = "OK";
         let mut is_queue = false;
@@ -76,6 +77,8 @@ impl Set {
             }
         }
         if !is_queue {
+            let mut watch_keys = watch_registry.lock().unwrap();
+            watch_keys.entry(self.key.clone()).and_modify(|v| *v = true);
             db.set(self.key, self.value, self.expire);
         }
         let response = Frame::Simple(response_str.to_string());
