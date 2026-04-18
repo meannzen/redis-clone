@@ -27,6 +27,7 @@ pub mod set;
 pub mod subscribe;
 pub mod type_cmd;
 pub mod unknown;
+pub mod unwatch;
 pub mod wait;
 pub mod watch;
 pub mod xadd;
@@ -58,6 +59,7 @@ pub use xread::XRead;
 pub mod zadd;
 pub use authentication::{Auth, ACL};
 pub use geo::{GeoAdd, GeoDist, GeoPos, GeoSearch};
+pub use unwatch::Unwatch;
 pub use watch::Watch;
 pub use zadd::{ZAdd, ZCard, ZRange, ZRank, ZRem, ZScore};
 
@@ -104,6 +106,7 @@ pub enum Command {
     Auth(Auth),
     Unknown(Unknown),
     Watch(Watch),
+    Unwatch(Unwatch),
 }
 
 impl Command {
@@ -160,6 +163,7 @@ impl Command {
                 }
             }
             "watch" => Command::Watch(Watch::parse_frame(&mut parse)?),
+            "unwatch" => Command::Unwatch(Unwatch),
             _ => {
                 return Ok(Command::Unknown(Unknown::new(command_string)));
             }
@@ -232,6 +236,7 @@ impl Command {
                     ACL(cmd) => cmd.apply(db, conn).await,
                     Unknown(cmd) => cmd.apply(conn).await,
                     Watch(cmd) => cmd.apply(transaction_state, conn, watch_registry).await,
+                    Unwatch(cmd) => cmd.apply(watch_registry, conn).await,
                     _ => Ok(()),
                 }
             }
@@ -284,6 +289,7 @@ impl Command {
             Command::ACL(_) => "acl",
             Command::Auth(_) => "auth",
             Command::Watch(_) => "watch",
+            Command::Unwatch(_) => "unwatch",
             Command::Unknown(_) => "unknown",
         }
     }
