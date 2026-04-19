@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::io::Write;
 use std::{env, fs, io};
 
 use crate::DEFAULT_PORT;
@@ -59,16 +60,7 @@ impl Cli {
     }
 
     fn append_only(&self) -> bool {
-        match &self.appendonly {
-            Some(v) => {
-                if v == "yes" {
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
+        matches!(&self.appendonly, Some(v) if v == "yes")
     }
 
     pub fn set_up_aof_persistence(&self) -> io::Result<()> {
@@ -94,6 +86,29 @@ impl Cli {
                             println!("File already exists, doing nothing.");
                         }
                         Err(e) => return Err(e), // Handle other actual errors (like permission denied)
+                    }
+
+                    let manifest_file_path =
+                        format!("{}/{}/{}.manifest", dir_path, dir_name, file_name);
+
+                    let content = format!("file {}.1.incr.aof seq 1 type i\n", file_name);
+
+                    match fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(&manifest_file_path)
+                    {
+                        Ok(mut file) => {
+                            file.write_all(content.as_bytes())?;
+                            println!("Created file: {}.manifest", file_name,);
+                        }
+                        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                            println!(
+                                "File {} already exists. Skipping creation.",
+                                manifest_file_path
+                            );
+                        }
+                        Err(e) => return Err(e),
                     }
                 }
             }
