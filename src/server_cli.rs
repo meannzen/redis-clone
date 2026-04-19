@@ -23,6 +23,14 @@ pub struct Cli {
     pub dir: Option<String>,
     #[arg(long)]
     pub dbfilename: Option<String>,
+    #[arg(long)]
+    pub appendonly: Option<String>,
+    #[arg(long)]
+    pub appenddirname: Option<String>,
+    #[arg(long)]
+    pub appendfilename: Option<String>,
+    #[arg(long)]
+    pub appendfsync: Option<String>,
 }
 
 impl Cli {

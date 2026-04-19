@@ -1,3 +1,5 @@
+use core::clone::Clone;
+
 use bytes::Bytes;
 
 use crate::{parse::Parse, Connection, Frame};
@@ -29,6 +31,7 @@ impl Config {
         conn: &mut Connection,
     ) -> crate::Result<()> {
         let mut frame: Frame = Frame::array();
+
         match self.cmd.as_str() {
             "dir" => {
                 frame.push_bulk(Bytes::from("dir"));
@@ -46,19 +49,35 @@ impl Config {
             }
             "appendonly" => {
                 frame.push_bulk(Bytes::from("appendonly"));
-                frame.push_bulk(Bytes::from("no"));
+                if let Some(append_only) = config.appendonly.clone() {
+                    frame.push_bulk(Bytes::from(append_only));
+                } else {
+                    frame.push_bulk(Bytes::from("no"));
+                }
             }
             "appenddirname" => {
                 frame.push_bulk(Bytes::from("appenddirname"));
-                frame.push_bulk(Bytes::from("appendonlydir"));
+                if let Some(append_dir_name) = config.appenddirname.clone() {
+                    frame.push_bulk(Bytes::from(append_dir_name));
+                } else {
+                    frame.push_bulk(Bytes::from("appendonlydir"));
+                }
             }
             "appendfilename" => {
                 frame.push_bulk(Bytes::from("appendfilename"));
-                frame.push_bulk(Bytes::from("appendonly.aof"));
+                if let Some(append_file_name) = config.appendfilename.clone() {
+                    frame.push_bulk(Bytes::from(append_file_name));
+                } else {
+                    frame.push_bulk(Bytes::from("appendonly.aof"));
+                }
             }
             "appendfsync" => {
                 frame.push_bulk(Bytes::from("appendfsync"));
-                frame.push_bulk(Bytes::from("everysec"));
+                if let Some(appendfsync) = config.appendfsync.clone() {
+                    frame.push_bulk(Bytes::from(appendfsync));
+                } else {
+                    frame.push_bulk(Bytes::from("everysec"));
+                }
             }
             _ => {
                 // Handle unknown config keys if necessary,
