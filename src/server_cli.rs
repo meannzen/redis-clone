@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::env;
+use std::{env, fs, io};
 
 use crate::DEFAULT_PORT;
 #[derive(Debug, Clone)]
@@ -56,6 +56,35 @@ impl Cli {
             .ok()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| ".".to_string())
+    }
+
+    fn append_only(&self) -> bool {
+        match &self.appendonly {
+            Some(v) => {
+                if v == "yes" {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
+    pub fn set_up_aof_persistence(&self) -> io::Result<()> {
+        if self.append_only() {
+            let dir_path = match &self.dir {
+                Some(dir) => dir.clone(),
+                None => env::current_dir()
+                    .ok()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| ".".to_string()),
+            };
+            if let Some(dir_name) = &self.appenddirname {
+                fs::create_dir_all(format!("{}/{}", dir_path, dir_name))?;
+            }
+        }
+        Ok(())
     }
 
     pub fn port(&self) -> u16 {

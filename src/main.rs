@@ -9,9 +9,10 @@ use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let config = Cli::parse();
 
-    let server_cli = cli.clone();
+    let server_cli = config.clone();
+    server_cli.set_up_aof_persistence()?;
     let server_port = server_cli.port();
     let server_handle = tokio::spawn(async move {
         let listener = TcpListener::bind(format!("127.0.0.1:{}", server_port))
@@ -23,7 +24,7 @@ async fn main() -> Result<()> {
     if let Some(ReplicaOf {
         host,
         port: master_port,
-    }) = cli.replicaof
+    }) = config.replicaof
     {
         tokio::spawn(async move {
             let mut client = Client::connect(format!("{}:{}", host, master_port))
