@@ -82,6 +82,20 @@ impl Cli {
             };
             if let Some(dir_name) = &self.appenddirname {
                 fs::create_dir_all(format!("{}/{}", dir_path, dir_name))?;
+                if let Some(file_name) = &self.appendfilename {
+                    let path = format!("{}/{}/{}.1.incr.aof", dir_path, dir_name, file_name);
+                    match fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(path)
+                    {
+                        Ok(_) => println!("File created successfully."),
+                        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                            println!("File already exists, doing nothing.");
+                        }
+                        Err(e) => return Err(e), // Handle other actual errors (like permission denied)
+                    }
+                }
             }
         }
         Ok(())
