@@ -7,6 +7,7 @@ use std::{
 };
 
 use tokio::{
+    io::AsyncWriteExt,
     net::{TcpListener, TcpStream},
     sync::{broadcast, mpsc, Semaphore},
 };
@@ -62,7 +63,7 @@ pub type WatchRegistry = Arc<Mutex<HashMap<String, bool>>>;
 use crate::{
     command::{Get, Incr, Set},
     database::parser::RdbParse,
-    server_cli::Cli,
+    server_cli::{get_aof_incremental_path, Cli},
     store::{Db, Store},
     Command, Connection,
 };
@@ -203,6 +204,8 @@ impl Handler {
                 None => return Ok(()),
             };
 
+            let (frame, raw_bytes) = frame;
+
             let command = Command::from_frame(frame.clone())?;
             let is_writer = command.is_writer();
             command
@@ -216,6 +219,16 @@ impl Handler {
                     &self.watch_registry,
                 )
                 .await?;
+
+            if is_writer && self.config.appendonly == Some("yes".to_string()) {
+                let path = get_aof_incremental_path(&self.config).await?;
+                let mut file = tokio::fs::OpenOptions::new()
+                    .append(true)
+                    .open(path)
+                    .await?;
+                file.write_all(&raw_bytes).await?;
+                file.sync_all().await?;
+            }
 
             if is_writer {
                 let frame_len = frame.clone().to_vec().len() as u64;

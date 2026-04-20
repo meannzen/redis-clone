@@ -55,10 +55,10 @@ impl Client {
 
         let mut offset = 0;
         while let Some(frame) = self.connection.read_frame().await? {
-            if matches!(frame, Frame::Simple(_)) {
+            if matches!(frame.0, Frame::Simple(_)) {
                 continue;
             }
-            let mut parse = Parse::new(frame.clone())?;
+            let mut parse = Parse::new(frame.0.clone())?;
             let command = parse.next_string().unwrap_or("".to_string());
             if command == "REPLCONF"
                 && parse.next_bytes().unwrap_or(Bytes::from("")) == "GETACK"
@@ -77,7 +77,7 @@ impl Client {
                 continue;
             }
 
-            client.connection.write_frame(&frame).await?;
+            client.connection.write_frame(&frame.0).await?;
             offset += self.connection.get_len();
         }
         Ok(())
@@ -138,10 +138,10 @@ impl Client {
     /// response is invalid or the connection is reset.
     async fn process_response(&mut self) -> Result<Bytes> {
         match self.connection.read_frame().await? {
-            Some(Frame::Simple(value)) => Ok(value.into()),
-            Some(Frame::Bulk(value)) => Ok(value),
-            Some(Frame::Error(msg)) => Err(crate::Error::from(msg)),
-            Some(frame) => Err(frame.to_error()),
+            Some((Frame::Simple(value), _)) => Ok(value.into()),
+            Some((Frame::Bulk(value), _)) => Ok(value),
+            Some((Frame::Error(msg), _)) => Err(crate::Error::from(msg)),
+            Some((frame, _)) => Err(frame.to_error()),
             None => {
                 Err(Error::new(ErrorKind::ConnectionReset, "Connection reset by server").into())
             }

@@ -60,7 +60,7 @@ impl Subscribe {
                 };
 
                 handle_command(
-                            frame,
+                            frame.0,
                             &mut self.channels,
                          &mut subscriptions,
                             conn,

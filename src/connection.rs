@@ -42,7 +42,7 @@ impl Connection {
         self.username.clone()
     }
 
-    pub async fn read_frame(&mut self) -> crate::Result<Option<Frame>> {
+    pub async fn read_frame(&mut self) -> crate::Result<Option<(Frame, bytes::Bytes)>> {
         loop {
             if let Some(frame) = self.parse_frame()? {
                 return Ok(Some(frame));
@@ -140,7 +140,7 @@ impl Connection {
         Ok(Connection::new(dup_tokio_stream))
     }
 
-    fn parse_frame(&mut self) -> crate::Result<Option<Frame>> {
+    fn parse_frame(&mut self) -> crate::Result<Option<(Frame, bytes::Bytes)>> {
         use frame::Error::Incomplete;
 
         let mut buff = Cursor::new(&self.buffer[..]);
@@ -148,10 +148,15 @@ impl Connection {
             Ok(_) => {
                 let len = buff.position() as usize;
                 buff.set_position(0);
+
                 self.len = len;
-                let frame = Frame::parse(&mut buff)?;
-                self.buffer.advance(len);
-                Ok(Some(frame))
+
+                let raw_bytes = self.buffer.copy_to_bytes(len);
+
+                let mut captured_buff = Cursor::new(&raw_bytes[..]);
+                let frame = Frame::parse(&mut captured_buff)?;
+
+                Ok(Some((frame, raw_bytes)))
             }
             Err(Incomplete) => Ok(None),
             Err(e) => Err(e.into()),
