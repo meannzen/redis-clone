@@ -61,6 +61,7 @@ impl ReplicaState {
 pub type WatchRegistry = Arc<Mutex<HashMap<String, bool>>>;
 
 use crate::{
+    aof::replay_aof,
     command::{Get, Incr, Set},
     database::parser::RdbParse,
     server_cli::{get_aof_incremental_path, Cli},
@@ -141,6 +142,12 @@ pub async fn run(listener: TcpListener, config: Cli, shutdown: impl Future) {
             for (key, value) in database.entries {
                 store.db.set(key, value.data, value.expire);
             }
+        }
+    }
+
+    if config.appendonly == Some("yes".to_string()) {
+        if let Err(e) = replay_aof(&Arc::new(config.clone()), &store.db).await {
+            eprintln!("Failed to replay AOF: {:?}", e);
         }
     }
 

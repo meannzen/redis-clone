@@ -29,6 +29,7 @@ impl Connection {
             username: Some("default".to_string()),
         }
     }
+
     pub fn set_authenticated(&mut self, authenticated: bool, username: Option<String>) {
         self.authenticated = authenticated;
         self.username = username;
@@ -264,7 +265,7 @@ impl Connection {
     async fn write_decimal(&mut self, val: u64) -> io::Result<()> {
         use std::io::Write;
 
-        let mut buf = [0u8, 20];
+        let mut buf = [0u8; 20];
         let mut buf = Cursor::new(&mut buf[..]);
         write!(&mut buf, "{}", val)?;
 
@@ -273,5 +274,24 @@ impl Connection {
         self.stream.write_all(b"\r\n").await?;
 
         Ok(())
+    }
+}
+
+pub fn parse_frame_from_buffer(buffer: &mut BytesMut) -> crate::Result<Option<Frame>> {
+    let mut cursor = Cursor::new(&buffer[..]);
+
+    match Frame::check(&mut cursor) {
+        Ok(_) => {
+            let len = cursor.position() as usize;
+
+            let raw_bytes = buffer.copy_to_bytes(len);
+
+            let mut parse_cursor = Cursor::new(&raw_bytes[..]);
+            let frame = Frame::parse(&mut parse_cursor)?;
+
+            Ok(Some(frame))
+        }
+        Err(crate::frame::Error::Incomplete) => Ok(None),
+        Err(e) => Err(e.into()),
     }
 }

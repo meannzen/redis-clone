@@ -33,6 +33,8 @@ pub mod watch;
 pub mod xadd;
 pub mod xrange;
 pub mod xread;
+use atoi;
+use bytes::Bytes;
 pub use config::Config;
 pub use discard::Discard;
 pub use echo::Echo;
@@ -170,6 +172,27 @@ impl Command {
         };
         parse.finish()?;
         Ok(command)
+    }
+    pub async fn apply_locally(&self, db: &Db) -> crate::Result<()> {
+        use atoi::atoi;
+        match self {
+            Command::Set(cmd) => {
+                db.set(cmd.key().to_string(), cmd.value().clone(), cmd.expire());
+            }
+            Command::Ince(cmd) => {
+                if let Some(value) = db.get(cmd.key()) {
+                    if let Some(mut value) = atoi::<u64>(&value) {
+                        value += 1;
+                        db.set(cmd.key().to_string(), Bytes::from(value.to_string()), None);
+                    }
+                } else {
+                    db.set(cmd.key().to_string(), Bytes::from("1"), None);
+                }
+            }
+            // Add other modifying commands here (DEL, HSET, etc.)
+            _ => {}
+        }
+        Ok(())
     }
     #[allow(clippy::too_many_arguments)]
     pub async fn apply(

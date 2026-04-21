@@ -1,3 +1,4 @@
+pub mod aof;
 pub mod clients;
 pub mod command;
 pub mod connection;
