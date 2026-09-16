@@ -15,6 +15,11 @@ pub struct GetBit {
     pub bit_index: usize,
 }
 
+#[derive(Debug)]
+pub struct STRLEN {
+    pub key: String,
+}
+
 impl SetBit {
     pub fn new(key: String, bit_index: usize, value: u8) -> Self {
         Self {
@@ -106,6 +111,31 @@ impl GetBit {
 
         let frame = Frame::Integer(response);
         conn.write_frame(&frame).await?;
+
+        Ok(())
+    }
+}
+
+impl STRLEN {
+    pub fn new(key: impl ToString) -> Self {
+        Self {
+            key: key.to_string(),
+        }
+    }
+
+    pub fn parse_frame(parse: &mut Parse) -> crate::Result<STRLEN> {
+        Ok(Self {
+            key: parse.next_string()?,
+        })
+    }
+
+    pub async fn apply(self, db: &Db, conn: &mut Connection) -> crate::Result<()> {
+        let response = match db.get(&self.key) {
+            Some(value) => value.len() as u64,
+            None => 0,
+        };
+
+        conn.write_frame(&Frame::Integer(response)).await?;
 
         Ok(())
     }
