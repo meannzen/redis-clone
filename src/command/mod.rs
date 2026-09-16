@@ -7,6 +7,7 @@ use crate::store::Db;
 use crate::{Connection, Frame};
 
 pub mod authentication;
+pub mod bitmap;
 pub mod config;
 pub mod discard;
 pub mod echo;
@@ -14,7 +15,6 @@ pub mod exec;
 pub mod geo;
 pub mod get;
 pub mod incr;
-pub mod bitmap;
 pub mod info;
 pub mod key;
 pub mod lrange;
@@ -61,11 +61,11 @@ pub use xrange::XRange;
 pub use xread::XRead;
 pub mod zadd;
 pub use authentication::{Auth, ACL};
+pub use bitmap::{GetBit, SetBit};
 pub use geo::{GeoAdd, GeoDist, GeoPos, GeoSearch};
 pub use unwatch::Unwatch;
 pub use watch::Watch;
 pub use zadd::{ZAdd, ZCard, ZRange, ZRank, ZRem, ZScore};
-pub use bitmap::{SetBit, GetBit};
 
 #[derive(Debug)]
 pub enum Command {

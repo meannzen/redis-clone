@@ -1,7 +1,6 @@
-
 use bytes::Bytes;
 
-use crate::{Connection, Frame, parse::Parse, store::Db};
+use crate::{parse::Parse, store::Db, Connection, Frame};
 
 #[derive(Debug)]
 pub struct SetBit {
@@ -11,7 +10,7 @@ pub struct SetBit {
 }
 
 #[derive(Debug)]
-pub struct  GetBit {
+pub struct GetBit {
     pub key: String,
     pub bit_index: usize,
 }
@@ -52,66 +51,62 @@ impl SetBit {
         let bit_pos = self.bit_index % 8;
 
         let mut vector = value.to_vec();
-
         if vector.len() <= bit_idx {
             vector.resize(bit_idx + 1, 0);
         }
 
-        let value_set : u8;
+        let old_byte = vector[bit_idx];
+        let response = ((old_byte >> (7 - bit_pos)) & 1) as u64;
 
-        let mut response: u64 = 0 ;
-
-        if value.is_empty() {
-            value_set = 0;
+        let mask = 1u8 << (7 - bit_pos);
+        if self.value > 0 {
+            vector[bit_idx] = old_byte | mask;
         } else {
-            value_set = vector[bit_idx];
-            response = ((value_set >> bit_pos) & 1) as u64
+            vector[bit_idx] = old_byte & !mask;
         }
 
-        vector[bit_idx] = value_set ^ (((self.value > 0) as u8) << bit_pos);
         let value = Bytes::from(vector);
         db.set(self.key, value, None);
+
         conn.write_frame(&crate::Frame::Integer(response)).await?;
         Ok(())
     }
 }
 
-
 impl GetBit {
-   pub fn new(key: String, bit_index: usize) ->Self {
-       Self { key, bit_index }
-   }
+    pub fn new(key: String, bit_index: usize) -> Self {
+        Self { key, bit_index }
+    }
 
-   pub fn key(&self) ->&str {
-       &self.key
-   }
+    pub fn key(&self) -> &str {
+        &self.key
+    }
 
-   pub fn parse_frame(parse: &mut Parse) ->crate::Result<GetBit> {
-       let key =  parse.next_string()?;
-       let bit_index : usize = parse.next_int()? as usize;
+    pub fn parse_frame(parse: &mut Parse) -> crate::Result<GetBit> {
+        let key = parse.next_string()?;
+        let bit_index: usize = parse.next_int()? as usize;
 
-       Ok(Self { key, bit_index })
-   }
+        Ok(Self { key, bit_index })
+    }
 
-   pub async  fn apply(self, db: &Db, conn: &mut Connection)->crate::Result<()> {
-
+    pub async fn apply(self, db: &Db, conn: &mut Connection) -> crate::Result<()> {
         let bit_idx = self.bit_index / 8;
         let bit_pos = self.bit_index % 8;
 
-       let response = match db.get(&self.key) {
-           Some(value) =>  {
-               if let Some(b) = value.get(bit_idx) {
-                   ((b >> bit_pos) & 1) as u64
-               } else {
-                   0
-               }
-           },
-           None => 0
-       };
+        let response = match db.get(&self.key) {
+            Some(value) => {
+                if let Some(b) = value.get(bit_idx) {
+                    ((b >> (7 - bit_pos)) & 1) as u64
+                } else {
+                    0
+                }
+            }
+            None => 0,
+        };
 
-       let frame = Frame::Integer(response);
-       conn.write_frame(&frame).await?;
+        let frame = Frame::Integer(response);
+        conn.write_frame(&frame).await?;
 
-       Ok(())
-   }
+        Ok(())
+    }
 }
