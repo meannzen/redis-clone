@@ -14,6 +14,7 @@ pub mod exec;
 pub mod geo;
 pub mod get;
 pub mod incr;
+pub mod bitmap;
 pub mod info;
 pub mod key;
 pub mod lrange;
@@ -64,6 +65,7 @@ pub use geo::{GeoAdd, GeoDist, GeoPos, GeoSearch};
 pub use unwatch::Unwatch;
 pub use watch::Watch;
 pub use zadd::{ZAdd, ZCard, ZRange, ZRank, ZRem, ZScore};
+pub use bitmap::{SetBit, GetBit};
 
 #[derive(Debug)]
 pub enum Command {
@@ -108,6 +110,8 @@ pub enum Command {
     Auth(Auth),
     Unknown(Unknown),
     Watch(Watch),
+    SetBit(SetBit),
+    GetBit(GetBit),
     Unwatch(Unwatch),
 }
 
@@ -165,6 +169,8 @@ impl Command {
                 }
             }
             "watch" => Command::Watch(Watch::parse_frame(&mut parse)?),
+            "setbit" => Command::SetBit(SetBit::parse_frame(&mut parse)?),
+            "getbit" => Command::GetBit(GetBit::parse_frame(&mut parse)?),
             "unwatch" => Command::Unwatch(Unwatch),
             _ => {
                 return Ok(Command::Unknown(Unknown::new(command_string)));
@@ -260,6 +266,8 @@ impl Command {
                     Unknown(cmd) => cmd.apply(conn).await,
                     Watch(cmd) => cmd.apply(transaction_state, conn, watch_registry).await,
                     Unwatch(cmd) => cmd.apply(watch_registry, conn).await,
+                    SetBit(cmd) => cmd.apply(db, conn).await,
+                    GetBit(cmd) => cmd.apply(db, conn).await,
                     _ => Ok(()),
                 }
             }
@@ -313,6 +321,8 @@ impl Command {
             Command::Auth(_) => "auth",
             Command::Watch(_) => "watch",
             Command::Unwatch(_) => "unwatch",
+            Command::SetBit(_) => "setbit",
+            Command::GetBit(_) => "getbit",
             Command::Unknown(_) => "unknown",
         }
     }
