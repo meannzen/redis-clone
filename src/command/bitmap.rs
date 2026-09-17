@@ -20,6 +20,18 @@ pub struct STRLEN {
     pub key: String,
 }
 
+#[derive(Debug)]
+pub struct BitCount {
+    pub key: String,
+    pub range: Range,
+}
+
+#[derive(Debug)]
+pub struct Range {
+    pub start: Option<i32>,
+    pub end: Option<i32>,
+}
+
 impl SetBit {
     pub fn new(key: String, bit_index: usize, value: u8) -> Self {
         Self {
@@ -139,4 +151,74 @@ impl STRLEN {
 
         Ok(())
     }
+}
+
+impl BitCount {
+    pub fn new(key: String, range: Range) -> Self {
+        Self { key, range }
+    }
+
+    #[inline]
+    pub fn start(&self) -> Option<i32> {
+        self.range.start
+    }
+
+    #[inline]
+    pub fn end(&self) -> Option<i32> {
+        self.range.end
+    }
+
+    pub fn parse_frame(parse: &mut Parse) -> crate::Result<BitCount> {
+        let key = parse.next_string()?;
+        let start: Option<i32> = parse.next_string().ok().and_then(|s| s.parse().ok());
+        let end: Option<i32> = parse.next_string().ok().and_then(|s| s.parse().ok());
+        Ok(Self {
+            key,
+            range: Range { start, end },
+        })
+    }
+
+    pub async fn apply(self, db: &Db, conn: &mut Connection) -> crate::Result<()> {
+        let response = match db.get(&self.key) {
+            Some(value) => {
+                let bytes = value.as_ref();
+                let len = bytes.len() as i32;
+
+                let mut start = self.start().unwrap_or(0);
+                if start < 0 {
+                    start = len + start;
+                }
+                start = start.max(0);
+
+                let mut end = self.end().unwrap_or(len - 1);
+                if end < 0 {
+                    end = len + end;
+                }
+                end = end.min(len - 1);
+
+                if start > end || len == 0 {
+                    0
+                } else {
+                    let mut count = 0u64;
+                    for &byte in &bytes[start as usize..=end as usize] {
+                        count += count_one(byte) as u64;
+                    }
+                    count
+                }
+            }
+            None => 0,
+        };
+
+        conn.write_frame(&Frame::Integer(response)).await?;
+        Ok(())
+    }
+}
+
+fn count_one(mut n: u8) -> u32 {
+    let mut count = 0;
+    while n != 0 {
+        n = n & (n - 1);
+        count += 1;
+    }
+    count
 }
