@@ -32,6 +32,20 @@ pub struct Range {
     pub end: Option<i32>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Op {
+    AND,
+    OR,
+}
+
+#[derive(Debug)]
+pub struct BitOp {
+    pub op: Op,
+    pub dest: String,
+    pub key1: String,
+    pub key2: String,
+}
+
 impl SetBit {
     pub fn new(key: String, bit_index: usize, value: u8) -> Self {
         Self {
@@ -214,6 +228,58 @@ impl BitCount {
     }
 }
 
+impl BitOp {
+    pub fn new(op: Op, dest: String, key1: String, key2: String) -> Self {
+        Self {
+            op,
+            dest,
+            key1,
+            key2,
+        }
+    }
+
+    pub fn parse_frame(parse: &mut Parse) -> crate::Result<BitOp> {
+        let op: Op = parse.next_string()?.try_into()?;
+        let dest = parse.next_string()?;
+        let key1 = parse.next_string()?;
+        let key2 = parse.next_string()?;
+
+        Ok(BitOp {
+            op,
+            dest,
+            key1,
+            key2,
+        })
+    }
+
+    pub async fn apply(self, db: &Db, conn: &mut Connection) -> crate::Result<()> {
+        let value1 = db.get(&self.key1).unwrap_or_default();
+        let value2 = db.get(&self.key2).unwrap_or_default();
+
+        let bytes1 = value1.as_ref();
+        let bytes2 = value2.as_ref();
+
+        let len = bytes1.len().max(bytes2.len());
+        let mut result = vec![0u8; len];
+
+        for i in 0..len {
+            let b1 = bytes1.get(i).copied().unwrap_or(0);
+            let b2 = bytes2.get(i).copied().unwrap_or(0);
+
+            result[i] = match self.op {
+                Op::AND => b1 & b2,
+                Op::OR => b1 | b2,
+            };
+        }
+
+        let result_len = result.len() as u64;
+        db.set(self.dest, Bytes::from(result), None);
+
+        conn.write_frame(&Frame::Integer(result_len)).await?;
+        Ok(())
+    }
+}
+
 fn count_one(mut n: u8) -> u32 {
     let mut count = 0;
     while n != 0 {
@@ -221,4 +287,15 @@ fn count_one(mut n: u8) -> u32 {
         count += 1;
     }
     count
+}
+
+impl TryFrom<String> for Op {
+    type Error = crate::Error;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "and" => Ok(Op::AND),
+            "or" => Ok(Op::OR),
+            _ => Err("BITOP support AND and OR operation".into()),
+        }
+    }
 }

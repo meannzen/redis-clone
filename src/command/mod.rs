@@ -61,7 +61,7 @@ pub use xrange::XRange;
 pub use xread::XRead;
 pub mod zadd;
 pub use authentication::{Auth, ACL};
-pub use bitmap::{GetBit, SetBit, STRLEN, BitCount};
+pub use bitmap::{BitCount, BitOp, GetBit, SetBit, STRLEN};
 pub use geo::{GeoAdd, GeoDist, GeoPos, GeoSearch};
 pub use unwatch::Unwatch;
 pub use watch::Watch;
@@ -114,6 +114,7 @@ pub enum Command {
     GetBit(GetBit),
     STRLEN(STRLEN),
     BitCount(BitCount),
+    BitOp(BitOp),
     Unwatch(Unwatch),
 }
 
@@ -175,6 +176,7 @@ impl Command {
             "getbit" => Command::GetBit(GetBit::parse_frame(&mut parse)?),
             "strlen" => Command::STRLEN(STRLEN::parse_frame(&mut parse)?),
             "bitcount" => Command::BitCount(BitCount::parse_frame(&mut parse)?),
+            "bitop" => Command::BitOp(BitOp::parse_frame(&mut parse)?),
             "unwatch" => Command::Unwatch(Unwatch),
             _ => {
                 return Ok(Command::Unknown(Unknown::new(command_string)));
@@ -274,6 +276,7 @@ impl Command {
                     GetBit(cmd) => cmd.apply(db, conn).await,
                     STRLEN(cmd) => cmd.apply(db, conn).await,
                     BitCount(cmd) => cmd.apply(db, conn).await,
+                    BitOp(cmd) => cmd.apply(db, conn).await,
                     _ => Ok(()),
                 }
             }
@@ -330,7 +333,8 @@ impl Command {
             Command::SetBit(_) => "setbit",
             Command::GetBit(_) => "getbit",
             Command::STRLEN(_) => "strlen",
-            Command::BitCount(_)=> "bitcount",
+            Command::BitCount(_) => "bitcount",
+            Command::BitOp(_) => "bitop",
             Command::Unknown(_) => "unknown",
         }
     }
