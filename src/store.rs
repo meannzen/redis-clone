@@ -139,13 +139,13 @@ impl Db {
             result_keys.extend(state.stream.keys().cloned().map(|x| x.into()));
         } else if key.ends_with('*') {
             let prefix = &key[0..key.len() - 1];
-            for (k, _) in state.entries.iter() {
+            for k in state.entries.keys() {
                 if k.starts_with(prefix) {
                     result_keys.push(k.clone().into());
                 }
             }
         } else if let Some(suffix) = key.strip_suffix('*') {
-            for (k, _) in state.entries.iter() {
+            for k in state.entries.keys() {
                 if k.ends_with(suffix) {
                     result_keys.push(k.clone().into());
                 }
@@ -410,7 +410,7 @@ impl Db {
         let state = self.shared.state.lock().unwrap();
         let z_set = state.z_set.get(&key)?;
 
-        for ((f, m), _) in z_set.iter() {
+        for (f, m) in z_set.keys() {
             if m == &member {
                 return Some(f.0);
             }

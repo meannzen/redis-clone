@@ -200,13 +200,13 @@ impl BitCount {
 
                 let mut start = self.start().unwrap_or(0);
                 if start < 0 {
-                    start = len + start;
+                    start += len;
                 }
                 start = start.max(0);
 
                 let mut end = self.end().unwrap_or(len - 1);
                 if end < 0 {
-                    end = len + end;
+                    end += len;
                 }
                 end = end.min(len - 1);
 
@@ -262,11 +262,11 @@ impl BitOp {
         let len = bytes1.len().max(bytes2.len());
         let mut result = vec![0u8; len];
 
-        for i in 0..len {
+        for (i, slot) in result.iter_mut().enumerate() {
             let b1 = bytes1.get(i).copied().unwrap_or(0);
             let b2 = bytes2.get(i).copied().unwrap_or(0);
 
-            result[i] = match self.op {
+            *slot = match self.op {
                 Op::AND => b1 & b2,
                 Op::OR => b1 | b2,
             };

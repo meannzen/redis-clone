@@ -36,10 +36,7 @@ pub struct Cli {
 
 impl Cli {
     pub fn file_path(&self) -> Option<String> {
-        let file_name = match &self.dbfilename {
-            Some(f) => f.as_str(),
-            None => return None,
-        };
+        let file_name = self.dbfilename.as_ref()?.as_str();
 
         let dir_path = match &self.dir {
             Some(dir) => dir.clone(),
